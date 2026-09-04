@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRight, Check, ChevronDown, Menu, Minus, Plus, ShoppingBag, Sparkles, Star, X } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, Menu, Minus, Plus, ShoppingBag, Sparkles, X } from 'lucide-react'
 import { CartProvider, PRODUCTS, useCart } from './context/CartContext'
 
 const money = n => new Intl.NumberFormat('en-ZA',{style:'currency',currency:'ZAR',maximumFractionDigits:0}).format(n)
