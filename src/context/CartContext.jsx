@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
 export const PRODUCTS = [
   { id:'aloe-gel', name:'Pure Aloe Ferox Gel', size:'150ml', price:149, category:'Skincare', badge:'Best Seller', description:'Cooling, lightweight daily hydration for sun-stressed and dry skin.', image:'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=700&q=80' },
@@ -7,17 +7,40 @@ export const PRODUCTS = [
   { id:'glow-bundle', name:'Ultimate Klein Karoo Glow Bundle', size:'3-piece set', price:349, compareAt:407, category:'Bundles', badge:'Save R58', description:'Gel + Bitter Tea + Repair Cream — the complete Cape Aloe ritual.', image:'https://images.unsplash.com/photo-1556229010-6c3f2c9ca5f8?auto=format&fit=crop&w=700&q=80' },
 ]
 
+const CART_STORAGE_KEY = 'cape-aloe-cart-v1'
 const CartContext = createContext(null)
-export function CartProvider({ children }) {
-  const [items, setItems] = useState([])
-  const [isOpen, setIsOpen] = useState(false)
-  const addItem = (product) => setItems(prev => { const found=prev.find(i=>i.id===product.id); return found ? prev.map(i=>i.id===product.id?{...i,quantity:i.quantity+1}:i) : [...prev,{...product,quantity:1}] })
-  const removeItem = id => setItems(prev=>prev.filter(i=>i.id!==id))
-  const increment = id => setItems(prev=>prev.map(i=>i.id===id?{...i,quantity:i.quantity+1}:i))
-  const decrement = id => setItems(prev=>prev.flatMap(i=>i.id===id ? (i.quantity>1?[{...i,quantity:i.quantity-1}]:[]) : [i]))
-  const subtotal = useMemo(()=>items.reduce((sum,i)=>sum+i.price*i.quantity,0),[items])
-  const itemCount = useMemo(()=>items.reduce((sum,i)=>sum+i.quantity,0),[items])
-  const amountUntilFreeShipping = Math.max(0,500-subtotal)
-  return <CartContext.Provider value={{items,addItem,removeItem,increment,decrement,subtotal,itemCount,amountUntilFreeShipping,isOpen,setIsOpen,shippingThreshold:500}}>{children}</CartContext.Provider>
+
+function loadCart() {
+  try {
+    const saved = localStorage.getItem(CART_STORAGE_KEY)
+    if (!saved) return []
+    const parsed = JSON.parse(saved)
+    return Array.isArray(parsed) ? parsed.filter(item => PRODUCTS.some(product => product.id === item.id) && Number.isInteger(item.quantity) && item.quantity > 0) : []
+  } catch {
+    return []
+  }
 }
+
+export function CartProvider({ children }) {
+  const [items, setItems] = useState(loadCart)
+  const [isOpen, setIsOpen] = useState(false)
+
+  useEffect(() => {
+    try { localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items)) } catch { /* storage can be unavailable */ }
+  }, [items])
+
+  const addItem = product => setItems(prev => {
+    const found = prev.find(i => i.id === product.id)
+    return found ? prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i) : [...prev, { ...product, quantity: 1 }]
+  })
+  const removeItem = id => setItems(prev => prev.filter(i => i.id !== id))
+  const increment = id => setItems(prev => prev.map(i => i.id === id ? { ...i, quantity: i.quantity + 1 } : i))
+  const decrement = id => setItems(prev => prev.flatMap(i => i.id === id ? (i.quantity > 1 ? [{ ...i, quantity: i.quantity - 1 }] : []) : [i]))
+  const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.price * i.quantity, 0), [items])
+  const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items])
+  const amountUntilFreeShipping = Math.max(0, 500 - subtotal)
+
+  return <CartContext.Provider value={{ items, addItem, removeItem, increment, decrement, subtotal, itemCount, amountUntilFreeShipping, isOpen, setIsOpen, shippingThreshold: 500 }}>{children}</CartContext.Provider>
+}
+
 export const useCart = () => useContext(CartContext)
